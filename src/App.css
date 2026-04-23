@@ -1,0 +1,545 @@
+/* ───────────────────────────────────────────
+   レイアウト
+─────────────────────────────────────────── */
+.app-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.main-content {
+  flex: 1;
+  padding: 28px 32px;
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* ───────────────────────────────────────────
+   ヘッダー
+─────────────────────────────────────────── */
+.header {
+  background-color: var(--ba-card-bg);
+  padding: 14px 32px;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  border-bottom: 2px solid rgba(0, 174, 239, 0.12);
+}
+
+.header-title {
+  color: var(--ba-primary);
+  font-size: 1.45rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  letter-spacing: -0.3px;
+}
+
+/* ───────────────────────────────────────────
+   ツールバー
+─────────────────────────────────────────── */
+.toolbar {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.filter-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: 2px solid rgba(0, 174, 239, 0.3);
+  border-radius: 24px;
+  background: var(--ba-card-bg);
+  color: var(--ba-text-sub);
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.filter-btn.active {
+  background: var(--ba-primary);
+  border-color: var(--ba-primary);
+  color: white;
+  box-shadow: 0 2px 12px rgba(0, 174, 239, 0.35);
+}
+
+.filter-btn:hover:not(.active) {
+  border-color: var(--ba-primary);
+  color: var(--ba-primary);
+}
+
+.reload-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: 2px solid rgba(0,0,0,0.1);
+  border-radius: 24px;
+  background: var(--ba-card-bg);
+  color: var(--ba-text-sub);
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.reload-btn:hover:not(:disabled) {
+  border-color: var(--ba-primary);
+  color: var(--ba-primary);
+}
+
+.reload-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.data-source-label {
+  font-size: 0.78rem;
+  color: var(--ba-text-sub);
+  margin-left: auto;
+  opacity: 0.7;
+}
+
+.spin {
+  animation: spinAnim 0.8s linear infinite;
+}
+@keyframes spinAnim {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* ───────────────────────────────────────────
+   エラーバナー
+─────────────────────────────────────────── */
+.error-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 20px;
+  background: rgba(255, 100, 100, 0.08);
+  border: 1px solid rgba(255, 100, 100, 0.3);
+  border-radius: var(--radius-sm);
+  color: #c0392b;
+  font-size: 0.9rem;
+  font-weight: 500;
+  margin-bottom: 20px;
+}
+
+/* ───────────────────────────────────────────
+   ダッシュボードグリッド
+─────────────────────────────────────────── */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 28px;
+  align-items: start;
+}
+
+@media (max-width: 1024px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ───────────────────────────────────────────
+   セクションタイトル
+─────────────────────────────────────────── */
+.section-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--ba-text-main);
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.section-title::before {
+  content: '';
+  display: block;
+  width: 4px;
+  height: 18px;
+  background: var(--ba-primary);
+  border-radius: 2px;
+}
+
+/* ───────────────────────────────────────────
+   共通カード
+─────────────────────────────────────────── */
+.card {
+  background: var(--ba-card-bg);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  overflow: hidden;
+  border: 1px solid rgba(0, 174, 239, 0.08);
+  margin-bottom: 14px;
+}
+
+.card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-md);
+}
+
+.card-ended {
+  opacity: 0.55;
+  filter: grayscale(40%);
+}
+
+.card-body {
+  padding: 16px 20px;
+}
+
+.card-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--ba-text-main);
+  margin-bottom: 6px;
+  line-height: 1.4;
+}
+
+.card-desc {
+  font-size: 0.88rem;
+  color: var(--ba-text-sub);
+  line-height: 1.6;
+  margin-bottom: 10px;
+}
+
+.card-footer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* ───────────────────────────────────────────
+   ステータスバッジ
+─────────────────────────────────────────── */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: 20px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.status-ongoing {
+  background: rgba(0, 200, 100, 0.12);
+  color: #00a855;
+  border: 1px solid rgba(0, 200, 100, 0.3);
+}
+
+.status-upcoming {
+  background: rgba(255, 165, 0, 0.12);
+  color: #e67e22;
+  border: 1px solid rgba(255, 165, 0, 0.3);
+}
+
+.status-ended {
+  background: rgba(150, 150, 150, 0.1);
+  color: #999;
+  border: 1px solid rgba(150, 150, 150, 0.2);
+}
+
+/* 日付バッジ */
+.date-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--ba-bg);
+  color: var(--ba-text-sub);
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.days-remaining {
+  color: var(--ba-primary);
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+/* ───────────────────────────────────────────
+   イベントカード
+─────────────────────────────────────────── */
+.event-card {
+  padding: 0;
+}
+
+.event-banner {
+  height: 120px;
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  padding: 12px 16px;
+}
+
+.event-banner-content {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.event-type-badge {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255,255,255,0.3);
+}
+
+/* ───────────────────────────────────────────
+   ガチャグリッド・カード
+─────────────────────────────────────────── */
+.gacha-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 14px;
+}
+
+.gacha-card {
+  padding: 16px;
+}
+
+.gacha-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.gacha-type-badge {
+  color: white;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.gacha-pickups {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+  min-height: 40px;
+}
+
+.pickup-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--ba-text-main);
+}
+
+/* ───────────────────────────────────────────
+   キャンペーン
+─────────────────────────────────────────── */
+.campaign-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.campaign-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 14px 16px;
+  border-left: 4px solid var(--campaign-color, var(--ba-primary));
+  border-radius: var(--radius-sm) !important;
+}
+
+.campaign-icon {
+  font-size: 1.4rem;
+  line-height: 1;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.campaign-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.campaign-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 2px;
+}
+
+.campaign-name {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--ba-text-main);
+}
+
+/* ───────────────────────────────────────────
+   総力戦・大決戦
+─────────────────────────────────────────── */
+.raid-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.raid-item {
+  padding: 16px 18px;
+  border-radius: var(--radius-sm) !important;
+}
+
+.raid-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 8px;
+  gap: 8px;
+}
+
+.raid-boss-name {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--ba-text-main);
+}
+
+.raid-badges {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+.raid-type-badge {
+  background: var(--ba-primary);
+  color: white;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.raid-type-badge.grand {
+  background: var(--ba-accent-pink);
+}
+
+.raid-info {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.raid-info-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--ba-text-sub);
+  font-size: 0.87rem;
+}
+
+/* ───────────────────────────────────────────
+   ローディング
+─────────────────────────────────────────── */
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  gap: 14px;
+}
+
+.spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid rgba(0, 174, 239, 0.2);
+  border-top-color: var(--ba-primary);
+  border-radius: 50%;
+  animation: spinAnim 0.7s linear infinite;
+}
+
+.loading-label {
+  color: var(--ba-text-sub);
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+/* ───────────────────────────────────────────
+   空状態メッセージ
+─────────────────────────────────────────── */
+.empty-msg {
+  color: var(--ba-text-sub);
+  font-size: 0.9rem;
+  padding: 24px;
+  text-align: center;
+  background: var(--ba-card-bg);
+  border-radius: var(--radius-md);
+  border: 1px dashed rgba(0, 174, 239, 0.2);
+}
+
+/* ───────────────────────────────────────────
+   フッター
+─────────────────────────────────────────── */
+.app-footer {
+  text-align: center;
+  padding: 20px;
+  font-size: 0.78rem;
+  color: var(--ba-text-sub);
+  border-top: 1px solid rgba(0,0,0,0.06);
+}
+
+.app-footer a {
+  color: var(--ba-primary);
+  font-weight: 600;
+}
+
+/* ───────────────────────────────────────────
+   レスポンシブ
+─────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .main-content {
+    padding: 20px 16px;
+  }
+  .header {
+    padding: 12px 16px;
+  }
+  .header-title {
+    font-size: 1.15rem;
+  }
+  .gacha-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .gacha-grid {
+    grid-template-columns: 1fr;
+  }
+}
