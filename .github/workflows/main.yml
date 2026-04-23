@@ -1,0 +1,52 @@
+name: Daily Data Fetch
+
+on:
+  # 毎日日本時間の朝9時 (UTCの0時) に実行
+  schedule:
+    - cron: '0 0 * * *'
+  # 手動でも実行できるようにする
+  workflow_dispatch:
+
+jobs:
+  update-data:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write # コードをPushするために必要な権限
+
+    steps:
+      # 1. リポジトリのチェックアウト
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2. Node.js のセットアップ
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20' # 使用するNode.jsのバージョン
+          cache: 'npm'
+
+      # 3. 依存関係のインストール
+      - name: Install dependencies
+        run: npm ci || npm install
+
+      # 4. データ取得スクリプトの実行
+      # ※ ここで実行するスクリプト名を実際のファイルやコマンドに合わせてください
+      - name: Run data fetching script
+        run: node scripts/fetchData.js # 例: npm run fetch-data
+
+      # 5. 変更があった場合にコミットしてプッシュ
+      - name: Commit and Push changes
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # 変更があるか確認
+          if git diff --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          
+          git add .
+          git commit -m "chore: 毎日自動データ更新 [skip ci]"
+          git push origin main
