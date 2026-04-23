@@ -208,6 +208,98 @@ function parseCampaignsFromNews(newsRows) {
 }
 
 // ───────────────────────────────────────────────────
+// レイド詳細パーサー（公式ニュースAPIのメンテナンス告知から抽出）
+// ───────────────────────────────────────────────────
+
+/**
+ * メンテナンス告知テキストから各レイドの地形・防御タイプを抽出する
+ * 
+ * 対象形式（メンテナンス告知HTML内）:
+ *   ►セクション開始: 「制約解除決戦「コクマー」開催」等
+ *   ►「■地形：屋外戦」
+ *   ►「■防御タイプ：重装甲」
+ *
+ * @param {Array} newsRows - 公式ニュースAPIのrow配列
+ * @returns {Array} { raidType, sectionTitle, terrain, armor, attackType }[]
+ */
+function parseRaidInfoFromNews(newsRows) {
+  const results = [];
+
+  for (const row of newsRows) {
+    const rawText = [row.summary ?? '', row.content ?? ''].join('\n');
+    // HTMLタグ除去・整形
+    const text = rawText
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>');
+
+    if (!text) continue;
+
+    // 「（数字）」でセクション分割
+    const sectionRe = /（\d+）([\s\S]+?)(?=（\d+）|$)/g;
+    let sectionMatch;
+
+    while ((sectionMatch = sectionRe.exec(text)) !== null) {
+      const section = sectionMatch[1];
+
+      // レイド種別を判別
+      let raidType = null;
+      if      (section.includes('制約解除決戦')) raidType = '制約解除決戦';
+      else if (section.match(/^\s*大決戦/))      raidType = '大決戦';
+      else if (section.match(/^\s*総力戦/))      raidType = '総力戦';
+      // 合同火力演習は地形・装甲情報が記載されないためスキップ
+      if (!raidType) continue;
+
+      // セクション冒頭のタイトル（「コンテンツ名「ボス名」開催」の「ボス名」部分）
+      const titleMatch = section.match(/[「『]([^」』]+)[」』]/);
+      const bossName = titleMatch ? titleMatch[1].trim() : null;
+
+      // 地形: 「■地形：屋外戦」
+      const terrainMatch = section.match(/■地形[：:]\s*([^\s■\n\r▼▶]+)/);
+      // 防御タイプ: 「■防御タイプ：重装甲」（複数の場合は「、」区切り）
+      const armorMatch   = section.match(/■防御タイプ[：:]\s*([^\n\r■▼▶]+)/);
+      // 攻撃タイプ（補足情報として取得）
+      const attackMatch  = section.match(/攻撃タイプ[：:]\s*([^\n\r■▼▶]+)/);
+
+      if (terrainMatch || armorMatch) {
+        results.push({
+          raidType,
+          bossName,
+          terrain:    terrainMatch ? terrainMatch[1].trim() : null,
+          armor:      armorMatch   ? armorMatch[1].trim()   : null,
+          attackType: attackMatch  ? attackMatch[1].trim()  : null,
+        });
+      }
+    }
+  }
+
+  return results;
+}
+
+/**
+ * arona-archive のタイトルからボス名（「」内の文字列）を抽出する
+ */
+function extractBossName(title) {
+  const m = title.match(/[「『]([^」』]+)[」』]/);
+  return m ? m[1] : '';
+}
+
+/**
+ * raidDetails からタイトルに対応する詳細情報を検索する
+ */
+function findRaidDetail(raidDetails, title, raidType) {
+  const bossInTitle = extractBossName(title);
+  return raidDetails.find(d => {
+    if (d.raidType !== raidType) return false;
+    if (!d.bossName) return false;
+    // ボス名の部分一致で照合（地形サフィックスを除くため contains で比較）
+    return bossInTitle.includes(d.bossName) || d.bossName.includes(bossInTitle);
+  });
+}
+
+// ───────────────────────────────────────────────────
 // メインエクスポート: 全スケジュールを取得して統合
 // ───────────────────────────────────────────────────
 
@@ -220,6 +312,9 @@ export async function fetchAllSchedule() {
       return [];
     }),
   ]);
+
+  // ニュースからレイドの地形・装甲情報を抽出（制約解除決戦・総力戦・大決戦に使用）
+  const raidDetails = parseRaidInfoFromNews(newsRows);
 
   // ── イベント（JP専用: arona-archive）──
   const events = (notices.events ?? [])
@@ -251,36 +346,44 @@ export async function fetchAllSchedule() {
     }))
     .sort((a, b) => new Date(b.startDate) - new Date(a.startDate));
 
-  // ── 総力戦（JP専用: arona-archive）──
+  // ── 総力戦（JP専用: arona-archive + ニュースで地形・装甲を補完）──
   const raidList = (notices.totalAssults ?? [])
-    .map(e => ({
-      id: e.id,
-      displayName: e.title,
-      type: '総力戦',
-      isGrand: false,
-      terrain: extractTerrain(e.title),
-      armor: '—',
-      startAt: toIso(e.startsAt),
-      endAt: toIso(e.endsAt),
-      url: e.url,
-      source: 'arona',
-    }))
+    .map(e => {
+      const detail = findRaidDetail(raidDetails, e.title, '総力戦');
+      return {
+        id: e.id,
+        displayName: e.title,
+        type: '総力戦',
+        isGrand: false,
+        terrain: detail?.terrain ?? extractTerrain(e.title),
+        armor:   detail?.armor   ?? '—',
+        attackType: detail?.attackType ?? null,
+        startAt: toIso(e.startsAt),
+        endAt:   toIso(e.endsAt),
+        url:     e.url,
+        source:  'arona',
+      };
+    })
     .sort((a, b) => new Date(b.startAt) - new Date(a.startAt));
 
-  // ── 大決戦（JP専用: arona-archive）──
+  // ── 大決戦（JP専用: arona-archive + ニュースで地形・装甲を補完）──
   const eliminateList = (notices.eliminateRaid ?? [])
-    .map(e => ({
-      id: e.id,
-      displayName: e.title,
-      type: '大決戦',
-      isGrand: true,
-      terrain: extractTerrain(e.title),
-      armor: '—',
-      startAt: toIso(e.startsAt),
-      endAt: toIso(e.endsAt),
-      url: e.url,
-      source: 'arona',
-    }))
+    .map(e => {
+      const detail = findRaidDetail(raidDetails, e.title, '大決戦');
+      return {
+        id: e.id,
+        displayName: e.title,
+        type: '大決戦',
+        isGrand: true,
+        terrain: detail?.terrain ?? extractTerrain(e.title),
+        armor:   detail?.armor   ?? '—',
+        attackType: detail?.attackType ?? null,
+        startAt: toIso(e.startsAt),
+        endAt:   toIso(e.endsAt),
+        url:     e.url,
+        source:  'arona',
+      };
+    })
     .sort((a, b) => new Date(b.startAt) - new Date(a.startAt));
 
   // ── 合同火力演習（JP専用: arona-archive）──
@@ -299,20 +402,25 @@ export async function fetchAllSchedule() {
     }))
     .sort((a, b) => new Date(b.startAt) - new Date(a.startAt));
 
-  // ── 制約解除決戦（JP専用: arona-archive）──
+  // ── 制約解除決戦（JP専用: arona-archive + ニュースで地形・装甲・攻撃タイプを補完）──
   const multiFloorList = (notices.multiFloorRaid ?? [])
-    .map(e => ({
-      id: e.id,
-      displayName: e.title,
-      type: '制約解除決戦',
-      isGrand: false,
-      terrain: '—',
-      armor: '—',
-      startAt: toIso(e.startsAt),
-      endAt: toIso(e.endsAt),
-      url: e.url,
-      source: 'arona',
-    }))
+    .map(e => {
+      // タイトルに地形は入っていないためニュースから取得
+      const detail = findRaidDetail(raidDetails, e.title, '制約解除決戦');
+      return {
+        id: e.id,
+        displayName: e.title,
+        type: '制約解除決戦',
+        isGrand: false,
+        terrain:    detail?.terrain    ?? null,
+        armor:      detail?.armor      ?? null,
+        attackType: detail?.attackType ?? null,
+        startAt: toIso(e.startsAt),
+        endAt:   toIso(e.endsAt),
+        url:     e.url,
+        source:  'arona',
+      };
+    })
     .sort((a, b) => new Date(b.startAt) - new Date(a.startAt));
 
   // 全レイド系をまとめて降順ソート

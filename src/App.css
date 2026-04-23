@@ -449,6 +449,19 @@
   background: var(--ba-accent-pink);
 }
 
+.raid-type-badge.joint {
+  background: #A855F7;
+}
+
+.raid-type-badge.multifloor {
+  background: #F59E0B;
+}
+
+/* 総力戦バッジ（デフォルトとは別に sorveil クラスで明示） */
+.raid-type-badge.sorveil {
+  background: var(--ba-primary);
+}
+
 .raid-info {
   display: flex;
   gap: 16px;
@@ -462,6 +475,13 @@
   gap: 4px;
   color: var(--ba-text-sub);
   font-size: 0.87rem;
+}
+
+/* 攻撃タイプ（制約解除決戦などで表示） */
+.raid-attack-type {
+  color: var(--ba-primary);
+  font-weight: 600;
+  font-size: 0.82rem;
 }
 
 /* ───────────────────────────────────────────

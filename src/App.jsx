@@ -5,7 +5,7 @@ import GachaCard from './components/GachaCard';
 import CampaignCard from './components/CampaignCard';
 import RaidCard from './components/RaidCard';
 import LoadingSpinner from './components/LoadingSpinner';
-import { fetchBanners, fetchRaids, fetchAllSchedule, groupBannersByPeriod } from './api/baApi';
+import { fetchAllSchedule } from './api/baApi';
 import { isEnded } from './utils/dataUtils';
 import './App.css';
 import { Megaphone, Star, Zap, Swords, EyeOff, RefreshCw, AlertTriangle } from 'lucide-react';
@@ -14,14 +14,21 @@ function App() {
   // ──────────────────────────────────────────────
   // State
   // ──────────────────────────────────────────────
-  const [bannerData, setBannerData] = useState(null);
-  const [raidData, setRaidData] = useState(null);
-  const [scheduleData, setScheduleData] = useState(null); // 公式ニュースから解析
+  const [scheduleData, setScheduleData] = useState(null); // 公式ニュース・arona-archiveから解析
   const [loading, setLoading] = useState(true);
   const [errors, setErrors] = useState({});
 
-  // 終了済みを非表示にするフィルター
-  const [hideEnded, setHideEnded] = useState(true);
+  // 終了済みを非表示にするフィルター（LocalStorageで状態を保存）
+  const [hideEnded, setHideEnded] = useState(() => {
+    const saved = localStorage.getItem('ba-tracker-hide-ended');
+    // 保存された設定がなければデフォルトは true
+    return saved !== null ? JSON.parse(saved) : true;
+  });
+
+  // hideEnded が変更されたら LocalStorage に保存
+  useEffect(() => {
+    localStorage.setItem('ba-tracker-hide-ended', JSON.stringify(hideEnded));
+  }, [hideEnded]);
 
   // ──────────────────────────────────────────────
   // APIフェッチ
@@ -32,32 +39,14 @@ function App() {
 
     const newErrors = {};
 
-    // 3つのAPIを並列取得（一部失敗しても残りを表示）
-    const [bannerResult, raidResult, scheduleResult] = await Promise.allSettled([
-      fetchBanners(),
-      fetchRaids(),
-      fetchAllSchedule(),
-    ]);
+    const scheduleResult = await fetchAllSchedule().catch(e => {
+      console.warn('スケジュール取得失敗:', e);
+      newErrors.schedule = e.message;
+      return null;
+    });
 
-    if (bannerResult.status === 'fulfilled') {
-      setBannerData(bannerResult.value);
-    } else {
-      newErrors.banner = bannerResult.reason?.message;
-      console.warn('バナー取得失敗:', bannerResult.reason);
-    }
-
-    if (raidResult.status === 'fulfilled') {
-      setRaidData(raidResult.value);
-    } else {
-      newErrors.raid = raidResult.reason?.message;
-      console.warn('レイド取得失敗:', raidResult.reason);
-    }
-
-    if (scheduleResult.status === 'fulfilled') {
-      setScheduleData(scheduleResult.value);
-    } else {
-      newErrors.schedule = scheduleResult.reason?.message;
-      console.warn('スケジュール取得失敗:', scheduleResult.reason);
+    if (scheduleResult) {
+      setScheduleData(scheduleResult);
     }
 
     setErrors(newErrors);
@@ -72,72 +61,11 @@ function App() {
   // データ統合・整形
   // ──────────────────────────────────────────────
 
-  // ガチャ: 公式ニュース解析 + 非公式API をマージ（重複除去）
-  const allGachaGroups = React.useMemo(() => {
-    const groups = [];
-    const seenKeys = new Set();
+  // ガチャ
+  const allGachaGroups = scheduleData?.gachas ?? [];
 
-    // 1. 公式ニュース解析ガチャ
-    for (const g of scheduleData?.gachas ?? []) {
-      const key = g.bannerName;
-      if (!seenKeys.has(key)) {
-        seenKeys.add(key);
-        groups.push({ ...g, id: key });
-      }
-    }
-
-    // 2. 非公式APIガチャ（公式で取得できなかった場合の補完）
-    if (bannerData) {
-      const apiGroups = groupBannersByPeriod([
-        ...(bannerData.current ?? []),
-        ...(bannerData.upcoming ?? []),
-        ...(bannerData.ended ?? []),
-      ]);
-      for (const g of apiGroups) {
-        // 同一期間・同一生徒のガチャが既にあれば追加しない（簡易重複判定）
-        const key = `api_${g.startDate}_${g.endDate}`;
-        if (!seenKeys.has(key)) {
-          seenKeys.add(key);
-          groups.push(g);
-        }
-      }
-    }
-
-    return groups.sort((a, b) => new Date(b.startDate) - new Date(a.startDate));
-  }, [scheduleData, bannerData]);
-
-  // 総力戦: 公式ニュース解析 + 非公式API をマージ
-  const allRaids = React.useMemo(() => {
-    const list = [];
-    const seenKeys = new Set();
-
-    // 1. 公式ニュース解析の総力戦・大決戦
-    for (const r of scheduleData?.raids ?? []) {
-      const key = `${r.displayName}_${r.startAt}`;
-      if (!seenKeys.has(key)) {
-        seenKeys.add(key);
-        list.push(r);
-      }
-    }
-
-    // 2. 非公式APIレイド（補完）
-    if (raidData) {
-      const apiRaids = [
-        ...(raidData.current ?? []),
-        ...(raidData.upcoming ?? []),
-        ...(raidData.ended ?? []),
-      ];
-      for (const r of apiRaids) {
-        const key = `api_${r.boss}_${r.startAt}`;
-        if (!seenKeys.has(key)) {
-          seenKeys.add(key);
-          list.push({ ...r, source: 'unofficial' });
-        }
-      }
-    }
-
-    return list.sort((a, b) => new Date(b.startAt) - new Date(a.startAt));
-  }, [scheduleData, raidData]);
+  // 総力戦・大決戦・制約解除決戦・合同火力演習
+  const allRaids = scheduleData?.raids ?? [];
 
   // イベント・キャンペーン（公式ニュース解析）
   const allEvents = scheduleData?.events ?? [];
@@ -196,7 +124,7 @@ function App() {
 
           {/* データソース表示 */}
           <span className="data-source-label">
-            データ: arona-archive / api.ennead.cc
+            データ: arona-archive / 公式ニュース
           </span>
         </div>
 
@@ -205,10 +133,7 @@ function App() {
           <div className="error-banner">
             <AlertTriangle size={18} />
             <span>
-              一部データの取得に失敗しました:
-              {errors.schedule ? ' [公式スケジュール]' : ''}
-              {errors.banner ? ' [ガチャ]' : ''}
-              {errors.raid ? ' [総力戦]' : ''}
+              スケジュールデータの取得に失敗しました。時間をおいて再読み込みしてください。
             </span>
           </div>
         )}
@@ -244,7 +169,7 @@ function App() {
                 <Star size={20} color="var(--ba-accent-pink)" />
                 ピックアップ募集
               </h2>
-              {loading && !scheduleData && !bannerData ? (
+              {loading && !scheduleData ? (
                 <LoadingSpinner label="ガチャ情報を取得中..." />
               ) : filteredGachaGroups.length === 0 ? (
                 <p className="empty-msg">現在開催中のピックアップはありません</p>
@@ -297,8 +222,7 @@ function App() {
         <span>
           データ提供:&nbsp;
           <a href="https://github.com/arona-archive/blue-archive-event-calendar" target="_blank" rel="noreferrer">arona-archive</a>
-          &nbsp;/&nbsp;
-          <a href="https://api.ennead.cc/buruaka" target="_blank" rel="noreferrer">api.ennead.cc</a>
+          &nbsp;/&nbsp;ブルーアーカイブ公式ニュース
         </span>
       </footer>
     </div>
